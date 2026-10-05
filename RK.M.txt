@@ -1,0 +1,181 @@
+%% REACTOR SIZING: CSTR vs PFR
+% Course Project: CHE331A - Chemical Reaction Engineering
+% Reaction: A -> B
+% Reaction kinetics: First-order
+%
+% Objective:
+% Calculate and compare the volumes of a CSTR and PFR
+% required to achieve a specified conversion.
+
+clc;
+clear;
+close all;
+
+%% 1. INPUT PARAMETERS
+
+CA0 = 2.0; % Initial concentration of A (mol/L)
+v0 = 10.0; % Volumetric flow rate (L/min)
+k = 0.25; % First-order rate constant (1/min)
+X_target = 0.80; % Target conversion
+
+% Initial molar flow rate of A
+FA0 = CA0 * v0; % mol/min
+
+%% 2. REACTION RATE
+
+% First-order reaction:
+% A -> B
+%
+% -rA = k*CA
+%
+% For constant-density flow:
+% CA = CA0*(1-X)
+%
+% Therefore:
+% -rA = k*CA0*(1-X)
+
+rate = @(X) k * CA0 .* (1 - X);
+
+%% 3. CSTR VOLUME
+
+% CSTR design equation:
+%
+% V = FA0*X / (-rA)
+%
+% Reaction rate is evaluated at outlet conversion.
+
+rA_CSTR = rate(X_target);
+
+V_CSTR = (FA0 * X_target) / rA_CSTR;
+
+%% 4. PFR VOLUME
+
+% PFR design equation:
+%
+% V = FA0 * integral[1/(-rA) dX]
+%
+% Integration limits:
+% X = 0 to X = X_target
+
+integrand = @(X) 1 ./ rate(X);
+
+V_PFR = FA0 * integral(integrand, 0, X_target);
+
+%% 5. DISPLAY INPUTS AND RESULTS
+
+fprintf('\n');
+fprintf('============================================\n');
+fprintf(' REACTOR SIZING CALCULATION\n');
+fprintf('============================================\n');
+
+fprintf('Reaction : A -> B\n');
+fprintf('Reaction order : First order\n');
+fprintf('Initial concentration : %.2f mol/L\n', CA0);
+fprintf('Flow rate : %.2f L/min\n', v0);
+fprintf('Rate constant : %.2f 1/min\n', k);
+fprintf('Target conversion : %.2f %%\n', X_target * 100);
+
+fprintf('\n--------------- RESULTS --------------------\n');
+
+fprintf('Initial molar flow FA0 : %.2f mol/min\n', FA0);
+fprintf('CSTR volume : %.4f L\n', V_CSTR);
+fprintf('PFR volume : %.4f L\n', V_PFR);
+
+%% 6. VOLUME SAVING
+
+volume_saving = ((V_CSTR - V_PFR) / V_CSTR) * 100;
+
+fprintf('PFR volume saving : %.2f %%\n', volume_saving);
+
+fprintf('--------------------------------------------\n');
+
+if V_PFR < V_CSTR
+fprintf('Conclusion: PFR requires less volume.\n');
+elseif V_CSTR < V_PFR
+fprintf('Conclusion: CSTR requires less volume.\n');
+else
+fprintf('Conclusion: Both require the same volume.\n');
+end
+
+fprintf('============================================\n');
+
+%% 7. CALCULATE VOLUME OVER A RANGE OF CONVERSIONS
+
+% Conversion range
+X = linspace(0.01, 0.95, 100);
+
+V_CSTR = zeros(size(X));
+V_PFR = zeros(size(X));
+
+for i = 1:length(X)
+
+% Reaction rate at current conversion
+r = rate(X(i));
+
+% CSTR volume
+V_CSTR(i) = (FA0 * X(i)) / r;
+
+% PFR volume
+V_PFR(i) = FA0 * integral(integrand, 0, X(i));
+
+end
+
+%% 8. PLOT: VOLUME VS CONVERSION
+
+figure;
+
+plot(X, V_CSTR, 'LineWidth', 2);
+hold on;
+
+plot(X, V_PFR, 'LineWidth', 2);
+
+% Target conversion points
+plot(X_target, ...
+(FA0 * X_target) / rate(X_target), ...
+'o', 'MarkerSize', 8, 'LineWidth', 2);
+
+plot(X_target, ...
+FA0 * integral(integrand, 0, X_target), ...
+'o', 'MarkerSize', 8, 'LineWidth', 2);
+
+grid on;
+
+xlabel('Conversion, X');
+ylabel('Reactor Volume (L)');
+
+title('CSTR and PFR Volume vs Conversion');
+
+legend('CSTR', 'PFR', ...
+'CSTR at Target Conversion', ...
+'PFR at Target Conversion', ...
+'Location', 'northwest');
+
+%% 9. BAR GRAPH COMPARISON
+
+figure;
+
+bar([ ...
+(FA0 * X_target) / rate(X_target), ...
+FA0 * integral(integrand, 0, X_target) ...
+]);
+
+set(gca, 'XTickLabel', {'CSTR', 'PFR'});
+
+ylabel('Reactor Volume (L)');
+
+title(sprintf('Reactor Volume at %.0f%% Conversion', ...
+X_target * 100));
+
+grid on;
+
+%% 10. FINAL SUMMARY
+
+fprintf('\n');
+fprintf('=============== FINAL SUMMARY =============\n');
+fprintf('Target conversion = %.0f %%\n', X_target * 100);
+fprintf('CSTR volume = %.2f L\n', ...
+(FA0 * X_target) / rate(X_target));
+fprintf('PFR volume = %.2f L\n', ...
+FA0 * integral(integrand, 0, X_target));
+fprintf('Volume saving = %.2f %%\n', volume_saving);
+fprintf('============================================\n');
